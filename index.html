@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Solving the Rubik's Cube by Search</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Newsreader:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#10153a;--mut:#5d6585;--bg:#eef1f8;--line:#d9deee;--panel:#0d1230;--W:#f4f4f4;--R:#e0413a;--G:#22a85a;--Y:#f5c400;--O:#f28a1e;--B:#2f6fe0}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:18px/1.65 Newsreader,Georgia,serif}
+h1,h2,h3,h4,.ui,button,select,input,th,nav{font-family:"Bricolage Grotesque",system-ui,sans-serif}
+nav{position:sticky;top:0;z-index:20;display:flex;gap:24px;align-items:center;padding:12px max(24px,calc(50% - 600px));background:#eef1f8d9;backdrop-filter:blur(10px);border-bottom:1px solid var(--line);font-size:15px}
+nav b{font-size:17px;margin-right:auto;display:flex;gap:8px;align-items:center}nav a{color:var(--mut);text-decoration:none}nav a:hover{color:var(--ink)}
+.dots{display:grid;grid-template-columns:repeat(3,8px);gap:2px}.dots i{width:8px;height:8px;border-radius:2px}
+.w{max-width:1200px;margin:0 auto;padding:0 24px}
+.hero{padding:56px 0 28px;display:grid;grid-template-columns:1.3fr 1fr;gap:32px;align-items:end}@media(max-width:900px){.hero{grid-template-columns:1fr}}
+h1{font-size:clamp(2.4rem,5vw,3.9rem);line-height:1.02;letter-spacing:-.03em;margin:0;font-weight:800}
+.hero p{color:var(--mut);margin:0;max-width:52ch}.fam{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.tag{font:600 13px "Bricolage Grotesque",sans-serif;padding:4px 12px;border-radius:99px;border:1.5px solid var(--c);color:var(--ink)}
+.lab{display:grid;grid-template-columns:280px minmax(0,1fr) 310px;background:var(--panel);color:#e6eaff;border-radius:20px;overflow:hidden;box-shadow:0 40px 70px -40px #10153acc}
+@media(max-width:1060px){.lab{grid-template-columns:1fr}}
+.col{padding:18px;display:flex;flex-direction:column;gap:14px}.col+.col{border-left:1px solid #ffffff14}
+h4{margin:0 0 6px;font-size:13px;font-weight:700;color:#9aa6e6;letter-spacing:.02em}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}.row label{display:flex;flex-direction:column;gap:2px;color:#9aa6e6;flex:1;min-width:70px}
+input,select{background:#ffffff10;border:1px solid #ffffff22;color:#fff;border-radius:8px;padding:6px 8px;font-size:14px;width:100%}input[type=range]{padding:0;accent-color:var(--Y)}
+button{cursor:pointer;border:0;border-radius:10px;font-weight:600;font-size:14px;padding:8px 14px;background:#ffffff14;color:#fff}button:hover{background:#ffffff26}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--Y);outline-offset:2px}
+.go{background:var(--Y);color:var(--panel)}.go:hover{background:#ffd633}.pill{font-size:13px;padding:5px 11px;border-radius:99px;border:1.5px solid var(--c);background:transparent}.pill.on{background:var(--c);color:#0d1230}
+details summary{cursor:pointer;font-size:13px;color:#9aa6e6}
+#stage{position:relative;height:520px;perspective:1500px;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;user-select:none;background:radial-gradient(circle at 50% 42%,#2b3688 0,#141a4a 45%,var(--panel) 80%)}
+#cube{width:0;height:0;transform-style:preserve-3d}.st{position:absolute;width:56px;height:56px;margin:-28px;border-radius:9px;border:3px solid #0b0e22;backface-visibility:hidden;box-shadow:inset 0 0 12px #ffffff40,inset 0 -6px 10px #00000030}
+#shadow{position:absolute;bottom:60px;width:300px;height:36px;border-radius:50%;background:radial-gradient(#000a,transparent 70%)}
+.hud{position:absolute;pointer-events:none}.tl{left:18px;top:14px}.tr{right:16px;top:12px;text-align:center}.hint{left:0;right:0;bottom:12px;text-align:center;font-size:12px;color:#9aa6e6}
+#mvn{font:800 46px/1 "Bricolage Grotesque";letter-spacing:-.02em}#mvc{font-size:13px;color:#9aa6e6;margin-top:4px}
+.gauge{position:relative;width:76px;height:76px}.gauge svg{transform:rotate(-90deg)}.gauge span{position:absolute;inset:0;display:grid;place-items:center;font:700 20px "Bricolage Grotesque"}.gauge small{display:block;font-size:11px;color:#9aa6e6}
+.bar{display:flex;gap:8px;align-items:center;padding:12px 18px;border-top:1px solid #ffffff14;flex-wrap:wrap}.bar input{width:120px}
+#chips{display:flex;flex-wrap:wrap;gap:5px;padding:0 18px 12px;min-height:38px}.chip{padding:4px 8px;font-size:13px;border-radius:8px;background:#ffffff14;color:#cfd6ff;transition:.2s}.chip.done{opacity:.45}.chip.cur{background:var(--Y);color:var(--panel);opacity:1;transform:scale(1.12)}
+#status{padding:0 18px 16px;font-size:13px;color:#ffd633;min-height:30px}
+#net{display:grid;grid-template-columns:repeat(12,1fr);grid-template-rows:repeat(9,1fr);gap:3px;aspect-ratio:12/9}.nc{border-radius:4px;transition:background .3s;display:grid;place-items:center;font:700 11px "Bricolage Grotesque";color:#0d123099}
+canvas{width:100%;display:block}#prof{height:110px;background:#ffffff0a;border-radius:10px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stats div{background:#ffffff0d;border-radius:10px;padding:8px 10px;font-size:12px;color:#9aa6e6}.stats b{display:block;font:700 20px "Bricolage Grotesque";color:#fff}
+section{padding:64px 0 0}h2{font-size:2rem;letter-spacing:-.02em;margin:0 0 6px;font-weight:800}.lead{color:var(--mut);max-width:65ch;margin:0 0 22px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:20px}.g4{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}@media(max-width:860px){.g2{grid-template-columns:1fr}}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px 22px}.card.f{border-top:5px solid var(--c)}.card h3{margin:0 0 6px;font-size:1.15rem}.card p{margin:0;font-size:16px}
+table{border-collapse:collapse;width:100%;font-size:14px;background:#fff;border-radius:12px;overflow:hidden}th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left}th{background:#e4e9f7}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;background:var(--c)}.bb{display:inline-block;height:8px;border-radius:4px;background:var(--c)}
+#ch{height:260px;background:#fff;border:1px solid var(--line);border-radius:16px}
+.leg{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.leg span{display:flex;gap:6px;align-items:center;font:600 13px "Bricolage Grotesque"}.leg i{width:22px;height:22px;border-radius:6px;border:2px solid #0b0e22}
+code{background:#e4e9f7;padding:1px 6px;border-radius:5px;font-size:.85em}footer{padding:48px 24px;text-align:center;color:var(--mut);font-size:14px}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head><body>
+<nav><b><span class="dots"><i style="background:#2f6fe0"></i><i style="background:#f4f4f4"></i><i style="background:#e0413a"></i><i style="background:#22a85a"></i><i style="background:#f5c400"></i><i style="background:#f28a1e"></i><i style="background:#e0413a"></i><i style="background:#2f6fe0"></i><i style="background:#f4f4f4"></i></span>Cube Search</b><a href="#lab">Lab</a><a href="#problem">Problem</a><a href="#methods">Methods</a><a href="#results">Results</a><a href="#docs">Docs</a></nav>
+<div class="w"><div class="hero"><h1>Solving the Rubik's Cube by search</h1>
+<div><p>An AI course project on the search chapter. One 3x3 cube, one environment, and four families of algorithms. Scramble the cube, run a method, and watch the solution unfold in 3D and on the unfolded net.</p>
+<div class="fam"><span class="tag" style="--c:var(--B)">Uninformed</span><span class="tag" style="--c:var(--G)">Informed</span><span class="tag" style="--c:var(--O)">Local search</span><span class="tag" style="--c:var(--R)">Metaheuristic</span></div></div></div>
+
+<div class="lab" id="lab">
+<div class="col"><div><h4>Scramble</h4><div class="row"><label>Depth <span id="kv">10</span><input id="k" type="range" min="1" max="25" value="10"></label><label>Seed<input id="seed" type="number" value="7"></label></div>
+<div class="row" style="margin-top:8px"><button id="scr" class="go">Scramble</button><button id="rst">Reset</button></div></div>
+<div><h4>Algorithm</h4><div id="algs" class="row"></div></div>
+<div class="row"><label>Node limit<input id="lim" type="number" value="150000"></label><label>A* weight<input id="w" type="number" step="0.5" value="1"></label></div>
+<details><summary>Genetic algorithm settings</summary><div class="row" style="margin-top:8px">
+<label>Population<input id="pop" type="number" value="200"></label><label>Generations<input id="gen" type="number" value="150"></label><label>Length<input id="len" type="number" value="12"></label>
+<label>Crossover<select id="cx"><option value="two">two point</option><option value="single">single point</option></select></label><label>Selection<select id="sel"><option value="tournament">tournament</option><option value="roulette">roulette</option></select></label>
+<label>Mutation<input id="pm" type="number" step="0.01" value="0.08"></label><label>Elite<input id="el" type="number" value="2"></label><label>Large number<input id="big" type="number" value="10000"></label><label>Crossover prob.<input id="pc" type="number" step="0.05" value="0.9"></label><label>Tournament size<input id="tk" type="number" value="4"></label><label>Conflict weight<input id="cw" type="number" value="10"></label></div></details>
+<div class="row"><button id="run" class="go" style="flex:1">Run algorithm</button><button id="all">Compare all</button></div>
+<div><h4>Manual moves</h4><div id="manual" class="row"></div></div></div>
+
+<div style="min-width:0"><div id="stage"><div id="shadow"></div><div id="cube"></div>
+<div class="hud tl"><div id="mvn">Ready</div><div id="mvc">No solution loaded</div></div>
+<div class="hud tr"><div class="gauge"><svg width="76" height="76"><circle cx="38" cy="38" r="26" fill="none" stroke="#ffffff1c" stroke-width="8"/><circle id="ring" cx="38" cy="38" r="26" fill="none" stroke="#f5c400" stroke-width="8" stroke-linecap="round" stroke-dasharray="163.4" stroke-dashoffset="0" style="transition:stroke-dashoffset .4s"/></svg><span id="gv">0</span></div><small style="color:#9aa6e6;font-size:11px">conflicts</small></div>
+<div class="hud hint">drag to rotate</div></div>
+<div class="bar"><button id="first" aria-label="Start">|&lt;</button><button id="prev">Back</button><button id="play" class="go">Play</button><button id="next">Next</button><label class="row" style="margin-left:auto">Speed <input id="spd" type="range" min="80" max="900" value="400" style="direction:rtl"></label></div>
+<div id="chips"></div><div id="status">Scramble the cube, pick an algorithm, then run it.</div></div>
+
+<div class="col"><div><h4>2D net</h4><div id="net"></div></div><div><h4>Conflicts along the solution</h4><canvas id="prof" width="600" height="220"></canvas></div>
+<div class="stats"><div>Algorithm<b id="s_a">-</b></div><div>Moves<b id="s_l">-</b></div><div>Nodes<b id="s_n">-</b></div><div>Time<b id="s_t">-</b></div></div></div>
+</div>
+
+<section id="problem"><h2>Problem definition</h2><p class="lead">The puzzle becomes a search problem, so every algorithm works on the same <code>Cube</code> environment, written in Python and in JavaScript with identical logic.</p>
+<div class="g2"><table><tr><th>Component</th><th>Definition</th></tr><tr><td>State</td><td>54 sticker colours (6 faces x 9). About 4.3 x 10^19 reachable states.</td></tr><tr><td>Initial state</td><td>Solved cube plus k random quarter turns. The depth k sets the difficulty.</td></tr><tr><td>Actions</td><td>12 quarter turns. Branching factor 12, or 11 after pruning the inverse of the last move.</td></tr><tr><td>Transition</td><td>One fixed sticker permutation per action, generated from 3D geometry.</td></tr><tr><td>Goal test</td><td>Boolean: every sticker has its solved colour.</td></tr><tr><td>Path cost</td><td>1 per turn, so cost equals solution length.</td></tr><tr><td>Distance</td><td>Conflict number c is the count of misplaced stickers. h = c / 20 never overestimates, since a turn fixes at most 20 stickers.</td></tr></table>
+<div class="card"><h3>Notation and colours</h3><p>Moves are named by the face they turn clockwise as seen from outside. A prime means counter-clockwise.</p><div class="leg" id="leg"></div></div></div></section>
+
+<section id="methods"><h2>Solution methods</h2><p class="lead">Each family is colour coded here and in the lab above.</p><div class="g4">
+<div class="card f" style="--c:var(--B)"><h3>Uninformed</h3><p>BFS and UCS are complete and optimal with unit costs but need exponential memory. Iterative deepening repeats depth-limited DFS to keep optimality with linear memory.</p></div>
+<div class="card f" style="--c:var(--G)"><h3>Informed</h3><p>Greedy orders by h. A* orders by g + w h, optimal when w is 1. IDA* applies iterative deepening to the f threshold.</p></div>
+<div class="card f" style="--c:var(--O)"><h3>Local search</h3><p>Hill climbing takes the neighbour with fewest conflicts, with sideways moves and random kicks. Annealing accepts worse states with probability exp(-dE/T) as T cools.</p></div>
+<div class="card f" style="--c:var(--R)"><h3>Genetic algorithm</h3><p>Individuals are fixed-length action sequences. Fitness is a large number minus path cost when a prefix solves the cube, else a half-large score minus conflicts. Roulette or tournament selection returns parent pairs, then crossover and mutation. A seeded generator makes runs repeatable.</p></div></div></section>
+
+<section id="results"><h2>Results</h2><p class="lead" id="gaR">Run the genetic algorithm to replay its generations here: best fitness, average fitness and the conflict count of the champion.</p>
+<canvas id="ch" width="1200" height="260"></canvas><h3 class="ui" style="margin:28px 0 10px">Comparison on the current scramble</h3>
+<table id="cmp"></table></section>
+
+<section id="docs"><h2>Report and documentation</h2><div class="g2"><div class="card"><h3>Reading the results</h3><p>BFS, UCS and IDS return optimal solutions, but nodes grow about 11 times per extra move, so they stop being practical past depth 6. A* with the admissible heuristic stays optimal and expands far fewer nodes. The heuristic is weak because the cube has long plateaus, so weighted A* and greedy trade optimality for speed and can still stall. Hill climbing is fast and often stuck, annealing escapes more plateaus but returns long paths. The genetic algorithm needs no search tree and reports a solution when conflicts reach 0, keeping the shortest sequence seen.</p></div>
+<div class="card"><h3>Files and deployment</h3><p><code>index.html</code> is the entire site with no build step. <code>python/cube_search.py</code> holds the OOP reference: <code>Cube</code>, <code>Searcher</code> and <code>GA</code>. Push the folder to GitHub, open Settings, then Pages, choose the main branch root and save. Run the Python version with <code>python3 python/cube_search.py</code>.</p></div></div></section></div>
+<footer>AI course, search chapter. A static page built for GitHub Pages.</footer>
+
+<script>
+"use strict";
+/* ---------- Environment (mirrors python/cube_search.py) ---------- */
+const FACES="URFDLB",NORM=[[0,1,0],[1,0,0],[0,0,1],[0,-1,0],[-1,0,0],[0,0,-1]],NAMES=[...FACES].flatMap(f=>[f,f+"'"]);
+const COL=["#f4f4f4","#e0413a","#22a85a","#f5c400","#f28a1e","#2f6fe0"];
+const ax=n=>n.findIndex(v=>v);
+function rot(v,a,s){const u=(a+1)%3,w=(a+2)%3,r=[...v];[r[u],r[w]]=s>0?[v[w],-v[u]]:[-v[w],v[u]];return r}
+const ST=[];NORM.forEach((n,f)=>{for(let x=-1;x<2;x++)for(let y=-1;y<2;y++)for(let z=-1;z<2;z++){const c=[x,y,z];if(c[ax(n)]===n[ax(n)])ST.push({c,n,f})}});
+const IDX=new Map(ST.map((s,i)=>[s.c+"|"+s.n,i])),SOLVED=ST.map(s=>s.f),PERMS=[];
+NORM.forEach(n=>{const a=ax(n);[n[a],-n[a]].forEach(s=>PERMS.push(ST.map((t,i)=>t.c[a]===n[a]?IDX.get(rot(t.c,a,s)+"|"+rot(t.n,a,s)):i)))});
+class Cube{
+ constructor(s=SOLVED){this.s=s}
+ move(m){const p=PERMS[m],o=new Array(54);for(let i=0;i<54;i++)o[p[i]]=this.s[i];return new Cube(o)}
+ play(q){return q.reduce((c,m)=>c.move(m),this)}
+ goal(){return this.misplaced()===0}
+ misplaced(){let n=0;for(let i=0;i<54;i++)if(this.s[i]!==SOLVED[i])n++;return n}
+ h(){return this.misplaced()/20}
+ key(){return this.s.join("")}
+ static scramble(k,r){const q=[];while(q.length<k){const m=Math.floor(r()*12);if(!q.length||m!==(q[q.length-1]^1))q.push(m)}return q}
+}
+function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const simplify=(path,m)=>{path[path.length-1]===(m^1)?path.pop():path.push(m)};
+class Heap{constructor(){this.a=[]}get size(){return this.a.length}
+ push(k,v){const a=this.a;a.push([k,v]);let i=a.length-1;while(i){const p=(i-1)>>1;if(a[p][0]<=a[i][0])break;[a[p],a[i]]=[a[i],a[p]];i=p}}
+ pop(){const a=this.a,t=a[0],l=a.pop();if(a.length){a[0]=l;let i=0;for(;;){let c=2*i+1;if(c>=a.length)break;if(c+1<a.length&&a[c+1][0]<a[c][0])c++;if(a[c][0]>=a[i][0])break;[a[i],a[c]]=[a[c],a[i]];i=c}}return t}}
+const res=(path,n,t)=>({path,expanded:n,ms:Math.round(performance.now()-t),found:!!path});
+
+/* ---------- Search algorithms ---------- */
+class Searcher{
+ constructor(limit){this.limit=limit}
+ bestFirst(start,kind,w=1){const t=performance.now(),H=new Heap(),seen=new Map([[start.key(),0]]);let n=0,tie=0;H.push(0,[start,[]]);
+  while(H.size&&n<this.limit&&H.size<this.limit*3){const[c,path]=H.pop()[1];if(c.goal())return res(path,n,t);n++;
+   for(let m=0;m<12;m++){if(path.length&&m===(path[path.length-1]^1))continue;const d=c.move(m),g=path.length+1,k=d.key();if((seen.get(k)??99)<=g)continue;seen.set(k,g);tie++;
+    const pr={bfs:tie,ucs:g,greedy:d.h(),astar:g+w*d.h()}[kind];H.push(pr+tie*1e-9,[d,[...path,m]])}}
+  return res(null,n,t)}
+ bidir(start){const t=performance.now(),g=new Cube(),A=new Map([[start.key(),[]]]),B=new Map([[g.key(),[]]]);let qa=[[start,[]]],qb=[[g,[]]],n=0;if(start.goal())return res([],0,t);
+  while((qa.length||qb.length)&&A.size+B.size<this.limit*3){const fw=qa.length&&(qa.length<=qb.length||!qb.length),q=fw?qa:qb,me=fw?A:B,ot=fw?B:A,nq=[];
+   for(const[c,p]of q){n++;for(let m=0;m<12;m++){if(p.length&&m===(p[p.length-1]^1))continue;const d=c.move(m),k=d.key();if(me.has(k))continue;const np=[...p,m];me.set(k,np);
+    if(ot.has(k)){const o=ot.get(k),f=fw?np:o,b=fw?o:np;return res([...f,...[...b].reverse().map(x=>x^1)],n,t)}nq.push([d,np])}}
+   if(fw)qa=nq;else qb=nq}
+  return res(null,n,t)}
+ ids(start,maxD=6){const t=performance.now();let n=0;const dls=(c,p,d)=>{if(c.goal())return p;if(!d||n>=this.limit)return null;
+   for(let m=0;m<12;m++){if(p.length&&m===(p[p.length-1]^1))continue;n++;const r=dls(c.move(m),[...p,m],d-1);if(r)return r}return null};
+  for(let d=0;d<=maxD;d++){const r=dls(start,[],d);if(r)return res(r,n,t)}return res(null,n,t)}
+ ida(start,maxD=8){const t=performance.now();let n=0;const go=(c,p,th)=>{const f=p.length+c.h();if(f>th+1e-9)return f;if(c.goal())return p;let nx=1e9;
+   for(let m=0;m<12;m++){if(p.length&&m===(p[p.length-1]^1))continue;if(n>=this.limit)return nx;n++;const r=go(c.move(m),[...p,m],th);if(Array.isArray(r))return r;nx=Math.min(nx,r)}return nx};
+  let th=start.h();while(th<=maxD){const r=go(start,[],th);if(Array.isArray(r))return res(r,n,t);if(n>=this.limit)break;th=r>th+1e-9?r:th+1}return res(null,n,t)}
+ hill(start,r,steps=400,side=5){const t=performance.now();let c=start,p=[],s=0;
+  for(let i=0;i<steps&&!c.goal();i++){let b=0,bs=1e9;for(let m=0;m<12;m++){const v=c.move(m).misplaced()+r()*.5;if(v<bs){bs=v;b=m}}
+   const gain=c.misplaced()-c.move(b).misplaced();if(gain<0||(gain===0&&s>=side)){b=Math.floor(r()*12);s=0}else if(gain===0)s++;c=c.move(b);simplify(p,b)}
+  return res(c.goal()?p:null,p.length,t)}
+ anneal(start,r,steps=20000,T=3,cool=.9995){const t=performance.now();let c=start,p=[];
+  for(let i=0;i<steps&&!c.goal();i++){const m=Math.floor(r()*12),d=c.move(m),dE=d.misplaced()-c.misplaced();if(dE<=0||r()<Math.exp(-dE/T)){c=d;simplify(p,m)}T*=cool}
+  return res(c.goal()?p:null,steps,t)}
+}
+class GA{
+ constructor(start,r,o){this.start=start;this.r=r;Object.assign(this,o)}
+ evaluate(ind){let c=this.start,best=[c.misplaced(),0];if(c.goal())return{f:this.big,conf:0,cost:0,path:[]};
+  for(let i=1;i<=ind.length;i++){c=c.move(ind[i-1]);if(c.goal())return{f:this.big-i,conf:0,cost:i,path:ind.slice(0,i)};const v=c.misplaced();if(v<best[0])best=[v,i]}
+  return{f:this.big/2-this.cw*best[0]-best[1],conf:best[0],cost:null}}
+ selectPairs(pop){const r=this.r,n=pop.length,ev=this.ev=pop.map(x=>this.evaluate(x)),fit=ev.map(e=>e.f);let pick;
+  if(this.sel==="roulette"){const lo=Math.min(...fit),cum=[];let s=0;fit.forEach(f=>cum.push(s+=f-lo+1e-9));pick=()=>{const x=r()*s;return pop[cum.findIndex(a=>a>=x)]}}
+  else pick=()=>{let b=-1;for(let j=0;j<this.k;j++){const i=Math.floor(r()*n);if(b<0||fit[i]>fit[b])b=i}return pop[b]};
+  return Array.from({length:n>>1},()=>{const a=pick();let b=pick();for(let t=0;t<5&&b===a;t++)b=pick();return[a,b]})}
+ cross(a,b){const n=a.length,r=this.r;let i=1+Math.floor(r()*(n-1)),j=n;if(this.cx==="two"){j=1+Math.floor(r()*(n-1));if(j<i)[i,j]=[j,i]}
+  return[[...a.slice(0,i),...b.slice(i,j),...a.slice(j)],[...b.slice(0,i),...a.slice(i,j),...b.slice(j)]]}
+ mutate(x){return x.map(g=>this.r()<this.pm?Math.floor(this.r()*12):g)}
+ run(onGen){const t=performance.now(),r=this.r;let pop=Array.from({length:this.pop},()=>Array.from({length:this.len},()=>Math.floor(r()*12))),best=null;const hist=[];
+  for(let g=0;g<this.gen;g++){const pairs=this.selectPairs(pop),ev=this.ev,fit=ev.map(e=>e.f);let top=0;fit.forEach((f,i)=>{if(f>fit[top])top=i});
+   if(ev[top].cost!==null&&(!best||ev[top].cost<best.length))best=ev[top].path;hist.push({ind:pop[top],best:fit[top],avg:fit.reduce((a,b)=>a+b)/fit.length,conf:ev[top].conf});
+   const kids=[];pairs.forEach(([a,b])=>{const[c1,c2]=r()<this.pc?this.cross(a,b):[[...a],[...b]];kids.push(this.mutate(c1),this.mutate(c2))});
+   const el=fit.map((f,i)=>i).sort((i,j)=>fit[j]-fit[i]).slice(0,this.elite).map(i=>pop[i]);pop=el.concat(kids).slice(0,this.pop)}
+  const o=res(best,this.gen*this.pop,t);o.history=hist;return o}
+}
+
+
+/* ---------- UI ---------- */
+const $=id=>document.getElementById(id),N=id=>+$(id).value,sleep=ms=>new Promise(r=>setTimeout(r,ms)),CV=["--B","--G","--O","--R"].map(v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim());
+const ALGS=[["bfs","BFS",0],["bidir","Bidirectional",0],["ucs","UCS",0],["ids","IDS",0],["greedy","Greedy",1],["astar","A*",1],["ida","IDA*",1],["hill","Hill climbing",2],["sa","Annealing",2],["ga","Genetic",3]];
+const SP=60;let cube=new Cube(),start=cube,sol=null,at=0,prof=null,alg="bidir",busy=false,playing=false,rid=0,touched=false,rx=-26,ry=-32;
+const cubeEl=$("cube"),netEl=$("net");
+const base=ST.map(s=>{const[x,y,z]=s.c,[nx,ny,nz]=s.n,o=nz===1?"":nz===-1?"rotateY(180deg)":nx===1?"rotateY(90deg)":nx===-1?"rotateY(-90deg)":ny===1?"rotateX(90deg)":"rotateX(-90deg)";return`translate3d(${x*SP}px,${-y*SP}px,${z*SP}px) ${o} translateZ(${SP/2}px)`});
+const rt=(v=[0,0,0])=>`rotateX(${v[0]}deg) rotateY(${v[1]}deg) rotateZ(${v[2]}deg) `;
+const els=ST.map((s,i)=>{const e=document.createElement("div");e.className="st";e.style.transform=rt()+base[i];cubeEl.appendChild(e);return e});
+const UPR=[[[0,0,-1],[1,0,0]],[[0,1,0],[0,0,-1]],[[0,1,0],[1,0,0]],[[0,0,1],[1,0,0]],[[0,1,0],[0,0,1]],[[0,1,0],[-1,0,0]]],OFF=[[3,0],[6,3],[3,3],[3,6],[0,3],[9,3]],dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],cells=[];
+for(let i=0;i<108;i++){const e=document.createElement("div");e.className="nc";e.style.visibility="hidden";netEl.appendChild(e);cells.push(e)}
+ST.forEach(s=>{const[u,r]=UPR[s.f],[ox,oy]=OFF[s.f],e=cells[(oy+1-dot(s.c,u))*12+ox+dot(s.c,r)+1];e.style.visibility="visible";if(s.c.filter(v=>!v).length===2)e.textContent=FACES[s.f];s.cell=e});
+$("leg").innerHTML=[...FACES].map((f,i)=>`<span><i style="background:${COL[i]}"></i>${f}</span>`).join("");
+const status=t=>$("status").textContent=t,view=()=>{cubeEl.style.transform=`scale3d(1.5,1.5,1.5) rotateX(${rx}deg) rotateY(${ry}deg)`};
+(function loop(){if(!touched&&!matchMedia("(prefers-reduced-motion:reduce)").matches)ry+=.22;view();requestAnimationFrame(loop)})();
+const stage=$("stage");let drag=null;stage.onpointerdown=e=>{drag=[e.clientX,e.clientY];touched=true;stage.setPointerCapture(e.pointerId)};stage.onpointerup=()=>drag=null;
+stage.onpointermove=e=>{if(!drag)return;ry+=(e.clientX-drag[0])*.6;rx=Math.max(-89,Math.min(89,rx-(e.clientY-drag[1])*.6));drag=[e.clientX,e.clientY]};
+function drawProf(){const c=$("prof"),g=c.getContext("2d"),W=c.width,H=c.height;g.clearRect(0,0,W,H);if(!prof)return;const n=Math.max(1,prof.length-1),mx=Math.max(...prof,1),X=i=>20+i*(W-40)/n,Y=v=>H-20-v/mx*(H-40);
+ g.beginPath();prof.forEach((v,i)=>i?g.lineTo(X(i),Y(v)):g.moveTo(X(i),Y(v)));g.lineTo(X(n),H-20);g.lineTo(X(0),H-20);g.fillStyle="#f5c40033";g.fill();
+ g.beginPath();prof.forEach((v,i)=>i?g.lineTo(X(i),Y(v)):g.moveTo(X(i),Y(v)));g.strokeStyle="#f5c400";g.lineWidth=3;g.stroke();g.beginPath();g.arc(X(at),Y(prof[at]),7,0,7);g.fillStyle="#fff";g.fill()}
+function draw(){ST.forEach((s,i)=>{const c=COL[cube.s[i]];els[i].style.background=c;s.cell.style.background=c});const c=cube.misplaced();$("gv").textContent=c;$("ring").style.strokeDashoffset=163.4*c/54;
+ $("mvc").textContent=sol?`Step ${at} of ${sol.length}`:"No solution loaded";$("mvn").textContent=sol&&at?NAMES[sol[at-1]]:"Ready";
+ [...$("chips").children].forEach((b,i)=>b.className="chip"+(i===at-1?" cur":i<at?" done":""));drawProf()}
+function turn(m,dur){return new Promise(done=>{const f=m>>1,a=ax(NORM[f]),s=NORM[f][a],v=[0,0,0];v[a]=(m&1?-1:1)*(a===1?-90:90)*s;
+ if(dur<30){cube=cube.move(m);draw();return done()}
+ const L=[];ST.forEach((t,i)=>{if(t.c[a]===s)L.push(i)});L.forEach(i=>{els[i].style.transition=`transform ${dur}ms cubic-bezier(.45,.05,.25,1)`;els[i].style.transform=rt(v)+base[i]});
+ setTimeout(()=>{L.forEach(i=>{els[i].style.transition="none";els[i].style.transform=rt()+base[i]});cube=cube.move(m);draw();done()},dur+20)})}
+const dur=()=>N("spd");
+function setSolution(p){sol=p;at=0;cube=start;prof=[...Array(p.length+1)].map((_,i)=>start.play(p.slice(0,i)).misplaced());
+ $("chips").innerHTML="";p.forEach((m,i)=>{const b=document.createElement("button");b.className="chip";b.textContent=NAMES[m];b.onclick=()=>jump(i+1);$("chips").appendChild(b)});draw()}
+function jump(i){if(!sol||busy)return;playing=false;at=i;cube=start.play(sol.slice(0,i));draw()}
+async function step(d){if(!sol||busy)return;busy=true;if(d>0&&at<sol.length){await turn(sol[at],dur());at++}else if(d<0&&at>0){await turn(sol[at-1]^1,dur());at--}busy=false;draw()}
+async function play(){if(playing){playing=false;return}if(!sol)return;if(at>=sol.length)jump(0);playing=true;$("play").textContent="Pause";while(playing&&at<sol.length)await step(1);playing=false;$("play").textContent="Play"}
+$("play").onclick=play;$("next").onclick=()=>{playing=false;step(1)};$("prev").onclick=()=>{playing=false;step(-1)};$("first").onclick=()=>jump(0);
+function clearSol(){sol=null;prof=null;at=0;$("chips").innerHTML="";rid++}
+$("k").oninput=()=>$("kv").textContent=N("k");
+$("scr").onclick=async()=>{if(busy)return;playing=false;clearSol();busy=true;cube=start=new Cube();draw();const q=Cube.scramble(N("k"),rng(N("seed")));$("seed").value=N("seed")+1;status("Scramble: "+q.map(m=>NAMES[m]).join(" ")+(q.length>11?"  |  Beyond about 11 moves none of these methods finish in the browser, so the run will report no solution.":q.length>6?"  |  Deep scramble: use Bidirectional (reaches about 11 moves). BFS, UCS, IDS and A* stop near 6.":""));
+ for(const m of q)await turn(m,q.length>10?70:130);start=cube;busy=false;draw()};
+$("rst").onclick=()=>{if(busy)return;playing=false;clearSol();cube=start=new Cube();status("Cube reset.");draw()};
+NAMES.forEach((n,m)=>{const b=document.createElement("button");b.textContent=n;b.style.padding="5px 9px";b.style.background=`${COL[m>>1]}`;b.style.color="#0d1230";b.onclick=async()=>{if(busy)return;playing=false;clearSol();busy=true;await turn(m,260);start=cube;busy=false;draw()};$("manual").appendChild(b)});
+ALGS.forEach(([id,n,f])=>{const b=document.createElement("button");b.className="pill"+(id===alg?" on":"");b.style.setProperty("--c",CV[f]);b.textContent=n;b.onclick=()=>{alg=id;[...$("algs").children].forEach(x=>x.classList.toggle("on",x===b))};$("algs").appendChild(b)});
+
+/* ---------- Run, replay, compare ---------- */
+function runAlg(name,r){const S=new Searcher(N("lim"));switch(name){case"bfs":case"ucs":case"greedy":return S.bestFirst(start,name);case"astar":return S.bestFirst(start,"astar",N("w"));case"ids":return S.ids(start);case"bidir":return S.bidir(start);case"ida":return S.ida(start);case"hill":return S.hill(start,r);case"sa":return S.anneal(start,r);
+ default:return new GA(start,r,{pop:N("pop"),gen:N("gen"),len:N("len"),cx:$("cx").value,sel:$("sel").value,pm:N("pm"),elite:N("el"),big:N("big"),pc:N("pc"),k:N("tk"),cw:N("cw")}).run()}}
+function chart(h,upto=h.length-1){const c=$("ch"),g=c.getContext("2d"),W=c.width,H=c.height;g.clearRect(0,0,W,H);if(!h)return;const all=h.flatMap(x=>[x.best,x.avg]),lo=Math.min(...all),hi=Math.max(...all),px=i=>60+i*(W-90)/Math.max(1,h.length-1),py=v=>H-34-(v-lo)/(hi-lo||1)*(H-64);
+ g.font="13px Bricolage Grotesque,sans-serif";g.fillStyle="#5d6585";g.strokeStyle="#e4e9f7";g.lineWidth=1;for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=py(v);g.beginPath();g.moveTo(60,y);g.lineTo(W-20,y);g.stroke();g.fillText(Math.round(v),8,y+4)}g.fillText("generation",W/2-30,H-8);
+ [["best","#2f6fe0","best fitness"],["avg","#e0413a","average fitness"]].forEach(([k,col,t],j)=>{g.strokeStyle=col;g.lineWidth=3;g.beginPath();for(let i=0;i<=upto;i++)i?g.lineTo(px(i),py(h[i][k])):g.moveTo(px(i),py(h[i][k]));g.stroke();g.fillStyle=col;g.fillText(t,80+j*130,18)});
+ g.fillStyle="#10153a";g.beginPath();g.arc(px(upto),py(h[upto].best),6,0,7);g.fill()}
+async function replay(o){const h=o.history,id=++rid,stepG=Math.max(1,Math.floor(h.length/110));clearSolKeep();
+ for(let g=0;g<h.length;g+=stepG){if(id!==rid)return false;chart(h,g);cube=start.play(h[g].ind);draw();$("mvn").textContent="Gen "+g;$("mvc").textContent=`champion has ${h[g].conf} conflicts`;await sleep(32)}
+ chart(h);cube=start;draw();const l=h[h.length-1];$("gaR").textContent=o.found?`Conflict number 0 reached. Shortest solution: ${o.path.length} moves. Final best fitness ${Math.round(l.best)}, average ${Math.round(l.avg)}.`:`No individual reached conflict 0. Best final conflict number: ${l.conf}. Try a larger population, longer sequences or more generations.`;return true}
+function clearSolKeep(){sol=null;prof=null;at=0;$("chips").innerHTML=""}
+const fillStats=(n,o)=>{$("s_a").textContent=n;$("s_l").textContent=o.found?o.path.length:"-";$("s_n").textContent=o.expanded;$("s_t").textContent=o.ms+" ms"};
+$("run").onclick=async()=>{if(busy)return;if(start.goal())return status("Scramble the cube first.");playing=false;busy=true;status(`Running ${ALGS.find(a=>a[0]===alg)[1]}...`);await sleep(40);
+ const o=runAlg(alg,rng(N("seed")));fillStats(ALGS.find(a=>a[0]===alg)[1],o);if(alg==="ga"){const ok=await replay(o);if(!ok){busy=false;return}}
+ busy=false;if(o.found){setSolution(o.path);status(`Solved in ${o.path.length} moves after ${o.expanded} nodes. Press Play to watch it.`)}else{cube=start;draw();status(`No solution found (${o.expanded} nodes, ${o.ms} ms). Raise the limit, lower the depth or try another method.`)}};
+$("all").onclick=async()=>{if(busy)return;if(start.goal())return status("Scramble the cube first.");busy=true;status("Comparing all algorithms...");await sleep(40);
+ const rows=ALGS.map(([id,n,f])=>[n,f,runAlg(id,rng(N("seed")))]),mx=Math.max(...rows.map(r=>r[2].expanded),1);
+ $("cmp").innerHTML="<tr><th>Algorithm</th><th>Solved</th><th>Moves</th><th>Nodes</th><th>Time (ms)</th><th>Nodes, relative</th></tr>"+rows.map(([n,f,o])=>`<tr><td><span class="dot" style="--c:${CV[f]}"></span>${n}</td><td>${o.found?"yes":"no"}</td><td>${o.found?o.path.length:"-"}</td><td>${o.expanded}</td><td>${o.ms}</td><td><span class="bb" style="--c:${CV[f]};width:${Math.max(3,o.expanded/mx*180)}px"></span></td></tr>`).join("");
+ const g=rows.find(r=>r[2].history);if(g)chart(g[2].history);busy=false;status("Comparison finished. See the Results section.");$("results").scrollIntoView({behavior:"smooth"})};
+draw();
+</script></body></html>
